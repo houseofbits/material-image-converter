@@ -4,7 +4,7 @@ const mime = require('mime-types');
 const sharp = require('sharp');
 const path = require('path');
 const colors = require('colors');
-const { channel } = require('diagnostics_channel');
+const chokidar = require('chokidar');
 
 function trimTrailingSlashes(path) {
     return path.replace(/[\/\\]+$/, '');
@@ -124,35 +124,79 @@ async function processFiles(files, configData, materialFolder) {
     }
 }
 
-const configPath = './config.json';
+async function processFolder(folder, configData) {
+    const sourcePath = path.resolve(path.normalize(configData.sourcePath));
+    const destPath = path.resolve(path.normalize(configData.destPath));
+
+    const folderPath = path.join(sourcePath, folder);
+
+    fs.mkdirSync(path.join(destPath, folder), { recursive: true });
+
+    const files = fs.readdirSync(folderPath);
+    try {
+        console.log("Process folder: ".green, folder.yellow);
+
+        await processFiles(files, configData, folder);
+    } catch (err) {
+        console.error('Error reading directory:', err);
+    }
+}
 
 async function process(configData) {
     const sourcePath = path.resolve(path.normalize(configData.sourcePath));
-    const destPath = path.resolve(path.normalize(configData.destPath));
 
     const files = fs.readdirSync(sourcePath);
     for (folder of files) {
         const folderPath = path.join(sourcePath, folder);
         if (fs.statSync(folderPath).isDirectory()) {
-            fs.mkdirSync(path.join(destPath, folder), { recursive: true });
-
-            const files = fs.readdirSync(folderPath);
-            try {
-                console.log("Process folder: ".green, folder.yellow);
-
-                await processFiles(files, configData, folder);
-            } catch (err) {
-                console.error('Error reading directory:', err);
-            }
+            await processFolder(folder, configData);
         }
     }
 }
 
+async function onFileChange(configData, filePath) {
+    const materialFolder = path.basename(path.dirname(filePath));
+    const filename = path.basename(filePath);
+    await processFiles(
+        [filename],
+        configData,
+        materialFolder
+    );
+}
+
+async function onFileRemoved(configData, filePath) {
+    const materialFolder = path.basename(path.dirname(filePath));
+    await processFolder(materialFolder, configData);
+}
+
 try {
+    const configPath = './config.json';
+
     const data = fs.readFileSync(configPath, 'utf8');
     const configData = JSON.parse(data);
 
     process(configData);
+
+    const sourcePath = path.resolve(path.normalize(configData.sourcePath));
+
+    const watcher = chokidar.watch(sourcePath, {
+        ignored: /(^|[\/\\])\../, // ignore dotfiles
+        persistent: true,
+        ignoreInitial: true,
+        depth: Infinity,
+        awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 100
+        },
+        alwaysStat: true  
+    });
+
+    watcher
+        .on('add', path => onFileChange(configData, path))
+        .on('change', path => onFileChange(configData, path))
+        .on('unlink', path => onFileRemoved(configData, path));
+    // .on('addDir', path => console.log(`Directory added: ${path}`))
+    // .on('unlinkDir', path => console.log(`Directory removed: ${path}`));
 
 } catch (err) {
     console.error('Error reading directory:', err);

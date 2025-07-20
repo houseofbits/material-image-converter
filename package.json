@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chokidar": "^4.0.3",
     "colors": "^1.4.0",
     "mime-types": "^3.0.1",
     "sharp": "^0.34.3"
