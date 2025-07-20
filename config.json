@@ -1,0 +1,28 @@
+{
+    "sourcePath": "/home/krists/Documents/blender-files/materials/concrete",
+    "destPath": "/home/krists/Documents/git/cpp-experiments/opengl-playground/bin/data/materials",
+    "mapping": [
+        {
+            "source": "diffuseOriginal",
+            "dest": "diffuse",
+            "size": 1024
+        },
+        {
+            "source": "normal",
+            "dest": "normal",
+            "size": 1024
+        },
+        {
+            "source": "metallic",
+            "dest": "mro",
+            "channel": 0,
+            "size": 1024
+        },
+        {
+            "source": "smoothness",
+            "dest": "mro",
+            "channel": 1,
+            "size": 1024
+        }
+    ]
+}
